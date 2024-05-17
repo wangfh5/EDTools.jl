@@ -1,14 +1,20 @@
 struct FBbasis
-    b::Dict{BitVector,Int} # Basis ket => number Dict
+    indexdict::Dict{BitVector,Int}  # Basis ket => index Dict, provide an ordering of basis kets
     kets::Vector{BitVector} # Basis kets
-    n::Int                  # total site number
-    k::Int                  # occupied site number / total particles
-    N::Int                  # Hilbert space size
+    Ns::Int                 # total site number
+    Np::Int                 # occupied site number / total particles
+    Hdim::Int               # the dimension of the Hilbert space
     ε::Int                  # sign, +1 for hard core boson / -1 for fermion
     stype::Symbol           # :hcboson / :fermion
-    conservation::Bool      # 
+    conservation::Bool      # particle number conservation
 end
 
+"""
+    bvector(m::Int, n::Int)::BitVector
+    bvector(bstring::String)::BitVector
+convert the integer `m` to a bit vector `bv` of length `n` according to its binary value,
+or convert the string `bstring` to a bit vector.
+"""
 function bvector(m::Int, n::Int)::BitVector
     bv = falses(n)
     @inbounds for i ∈ 1:n
@@ -21,34 +27,57 @@ function bvector(bstring::String)::BitVector
     return [x for x ∈ bstring] .== '1'
 end
 
-# :hcboson - hard core boson | :fermion - fermion
-# conservation - true for the subspace with fixed particle number, false for the full Fock space
-function FBbasis(kets::Vector{BitVector}, stype::Symbol, conservation = false)
-    n = length(kets[1])
-    N = length(kets)
-    k = 0
-    b = Dict(kets[i] => i for i ∈ eachindex(kets))
+"""
+    FBbasis(kets::Vector{BitVector}, stype::Symbol, conservation = false)
+Construct a `FBbasis` object with the given basis kets. 
+`stype`: `:hcboson` for hard core boson | `:fermion` for spinless fermion;
+`conservation`: true for the subspace with fixed particle number, false for the full Fock space
+"""
+function FBbasis(kets::Vector{BitVector}, stype::Symbol, conservation::Bool = false)
+    Ns = length(kets[1])
+    Hdim = length(kets)
+    Np = 0 # no explict particle number conservation
+    indexdict = Dict(kets[i] => i for i ∈ eachindex(kets))
     ε = (stype == :fermion) ? (-1) : (+1)
-    return FBbasis(b, kets, n, k, N, ε, stype, conservation)
+    return FBbasis(indexdict, kets, Ns, Np, Hdim, ε, stype, conservation)
 end
 
-function FBbasis(n::Int, k::Int, stype::Symbol, conservation::Bool=true)
+"""
+    FBbasis(n::Int, k::Int, stype::Symbol, conservation::Bool = true)
+Construct a `FBbasis` object with the given site number `Ns` and particle number `Np`.
+`stype`: `:hcboson` for hard core boson | `:fermion` for spinless fermion;
+"""
+function FBbasis(Ns::Int, Np::Int, stype::Symbol, conservation::Bool=true)
     @assert stype == :hcboson || stype == :fermion
-    @assert (k == 0) ⊻ conservation
+    @assert (Np == 0) ⊻ conservation
     # --------------------------------------------
     kets = if conservation
         BitVector[
-            let v = falses(n)
+            let v = falses(Ns)
                 v[q] .= true
                 v
-            end for q ∈ CoolLexCombinations(n, k)
+            end for q ∈ CoolLexCombinations(Ns, Np)
         ]
     else
-        BitVector[bvector(m, n) for m ∈ 0:(2^n-1)]
+        BitVector[bvector(m, Ns) for m ∈ 0:(2^Ns-1)]
     end
     sort!(kets,by=count)
-    b = Dict(kets[i] => i for i ∈ eachindex(kets))
-    N = length(kets)
+    indexdict = Dict(kets[i] => i for i ∈ eachindex(kets))
+    Hdim = length(kets)
     ε = (stype == :fermion) ? (-1) : (+1)
-    return FBbasis(b, kets, n, k, N, ε, stype, conservation)
+    return FBbasis(indexdict, kets, Ns, Np, Hdim, ε, stype, conservation)
 end
+
+"""
+    wf_from_ket(ϕ::FBbasis, k::BitVector)::Vector{ComplexF64}
+Convert a basis ket (BitVector `k`) to a wavefunction (complex vector `ψ`) in the many-body basis `ϕ`.
+"""
+function wf_from_ket(ϕ::FBbasis, k::BitVector)::Vector{ComplexF64}
+    @assert length(k) == ϕ.Ns
+    q = ϕ.indexdict[k]
+    ψ = zeros(ComplexF64, ϕ.Hdim)
+    ψ[q] = 1
+    return ψ
+end
+wf_from_ket(ϕ::FBbasis, k::Vector{Bool}) = wf_from_ket(ϕ::FBbasis, BitVector(k))
+wf_from_ket(ϕ::FBbasis, s::String) = wf_from_ket(ϕ, bvector(s))

@@ -15,12 +15,12 @@ using SparseArrays
 # import Base.Matrix
 # import LinearAlgebra.adjoint
 
-include("ladders.jl")
 include("basis.jl")
+include("ladders.jl")
 include("operators.jl")
-include("entropy.jl")
 include("conventions.jl")
-include("extratools.jl")
+# include("entropy.jl")
+# include("extratools.jl")
 
 for n in names(@__MODULE__; all=true)
     if Base.isidentifier(n) && n ∉ (Symbol(@__MODULE__), :eval, :include)
