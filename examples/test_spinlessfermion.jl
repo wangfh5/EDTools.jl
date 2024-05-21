@@ -9,7 +9,7 @@ Np = 0
 ## test basis and ladder operators
 ϕ = FBbasis(Ns, Np, :fermion, false)
 # Define the BitVectors
-v = ϕ.kets[1]
+v = ϕ.kets[3]
 vt = BitVector(undef, length(v))
 # Convert to complex vector
 ψ = wf_from_ket(ϕ, v)

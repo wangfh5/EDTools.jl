@@ -1,15 +1,16 @@
 """
     struct Ladder(site::Int, flag::Bool)
-A ladder operator at site `site` with creation/annihilation flag `flag`.
+A ladder operator at site `site` and flavor `flr` with creation/annihilation flag `flag`.
 `flag`: true for creation / false for annihilation
 """
 struct Ladder
     site::Int
+    flr::Int
     flag::Bool
 end
-Ladder(sf::Tuple{Int,Bool}) = Ladder(sf[1], sf[2])
-uuLadder(s::Int) = Ladder(s, true)
-ddLadder(s::Int) = Ladder(s, false)
+Ladder(sf::Tuple{Int,Bool}) = Ladder(sf[1], sf[2], sf[3])
+uuLadder(s::Int; f::Int=1) = Ladder(s, f, true)
+ddLadder(s::Int; f::Int=1) = Ladder(s, f, false)
 
 """
     Ladders(ladder...)::Tuple{Ladder}
@@ -22,19 +23,24 @@ Ladders(ladder...) = (ladder...,)
 Hermitian conjugate a `Ladder` operator. 
 Overloading the `conj` function for `Ladder` to return a new `Ladder` with the `flag` negated. 
 """
-Base.conj(c::Ladder) = Ladder(c.site, ~c.flag)
+Base.conj(c::Ladder) = Ladder(c.site, c.flr, ~c.flag)
 
 """
     Base.isless(a1::Ladder, a2::Ladder)::Bool
 Overloading the `isless` function for `Ladder` to compare two `Ladder` operators. 
 This is used to normally order an arbitary operator. 
 1. Creation operators > annihilation operators. 
-2. Compare the site index for the same kind of operators.
-a⁺ₙ > a⁺ₙ₋₁ > ... > a⁺₁ > aₙ > aₙ₋₁ > ... > a₁
+2. Compare the flavor index for the same kind of operators.
+3. Compare the site index for the same kind of operators with the same flavor.
+e.g., for nflr=1, a⁺ₙ > a⁺ₙ₋₁ > ... > a⁺₁ > aₙ > aₙ₋₁ > ... > a₁
 """
 function Base.isless(a1::Ladder, a2::Ladder)
     if a1.flag == a2.flag
-        return isless(a1.site, a2.site)
+        if a1.flr == a2.flr
+            return isless(a1.site, a2.site)
+        else
+            return isless(a1.flr, a2.flr)
+        end
     else
         return isless(a1.flag, a2.flag)
     end
@@ -63,12 +69,14 @@ end
     apply_Ladder!(v::BitVector, a::Ladder, ε::Int)::Int
 Apply a ladder operator `a` to a bit vector `v`, modify the vector `v` and return the coefficient.
 """
-function apply_Ladder!(v::BitVector, a::Ladder, ε::Int)::Int
-    if a.flag == v[a.site]
+function apply_Ladder!(v::BitVector, a::Ladder, ε::Int; nflr::Int=1)::Int
+    ns = Int(length(v)/nflr)
+    aindex = Int((a.flr-1)*ns + a.site)
+    if a.flag == v[aindex]
         return 0
     else
-        v[a.site] = a.flag
-        return ε^count(v[1:(a.site-1)])
+        v[aindex] = a.flag
+        return ε^count(v[1:(aindex-1)])
     end
 end
 
@@ -77,14 +85,14 @@ end
 Apply a series of ladder operators `S` to a bit vector `v`, modify the vector `vt` and return the coefficient.
 The application starts from the first element of `S` and ends at the last element.
 """
-function apply_Ladders!(vt::BitVector, v::BitVector, S::NTuple{N,Ladder}, ε::Int)::Int where N
+function apply_Ladders!(vt::BitVector, v::BitVector, S::NTuple{N,Ladder}, ε::Int; nflr::Int=1)::Int where N
     s = 1
     copy!(vt, v)
     # start with the first element of S
     # So S is expected to be in the ascending order of operators (reversed normal order) 
     # so that annihilation operators are applied first.
     for a ∈ S
-        s *= apply_Ladder!(vt, a, ε)
+        s *= apply_Ladder!(vt, a, ε, nflr=nflr)
         if s == 0
             return 0
         end

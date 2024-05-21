@@ -38,13 +38,13 @@ function table!(op::OpTerm)
     ε::Int = ϕ.ε
     s::Int = 0
     i::Int = 0
-    vt = falses(ϕ.Ns)
+    vt = falses(ϕ.Ndim)
     op.table = Tuple{Int,Int,Int}[]
     for j ∈ eachindex(ϕ.kets)
-        s = apply_Ladders!(vt, ϕ.kets[j], op.ladders, ε)
+        s = apply_Ladders!(vt, ϕ.kets[j], op.ladders, ε, nflr=ϕ.Nflr)
         if s ≠ 0
             i = get(ϕ.indexdict, vt, 0)
-            if i ≠ 0
+            if i ≠ 0 # the final state exists in the interested Hilbert space
                 push!(op.table, (i, j, s))
             end
         end
