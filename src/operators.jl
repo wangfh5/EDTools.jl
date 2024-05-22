@@ -5,7 +5,7 @@ Mutable struct definition with a type parameter `N`.
 """
 mutable struct OpTerm{N} <: Qop
     ladders::NTuple{N,Ladder}             # Operator representation: Tuple of N Ladder objects (note that the action of `ladders` starts with `ladders[1]` and ends with `ladders[N]`)
-    α::UniformScaling                     # Scaling coefficient
+    α::Union{Number, UniformScaling}      # Scaling coefficient
     ϕ::Union{Nothing,FBbasis}             # Optional basis
     table::Union{Nothing,AbstractVector}  # Optional table representation
     matrix::Union{Nothing,AbstractMatrix} # Optional sparse matrix representation

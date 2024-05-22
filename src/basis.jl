@@ -12,7 +12,7 @@ struct FBbasis
     kets::Vector{BitVector} # Basis kets
     Ns::Int                 # total site number
     Nflr::Int               # flavor number (e.g., different spin, 1 for spin up, 2 for spin down)
-    Np::Int                 # occupied site number / total particles
+    Np::Int                 # occupied site number / total particles per flavor
     Ndim::Int               # total degree of freedom, Ns*Nflr
     Hdim::Int               # the dimension of the Hilbert space, 2^Ndim
     ε::Int                  # sign, +1 for hard core boson / -1 for fermion
@@ -64,15 +64,25 @@ function FBbasis(Ns::Int, Np::Int, stype::Symbol, conservation::Bool=true; Nflr:
     @assert (Np == 0) ⊻ conservation
     # --------------------------------------------
     Ndim = Ns*Nflr
-    kets = if conservation
-        BitVector[
-            let v = falses(Ndim)
-                v[q] .= true
-                v
-            end for q ∈ CoolLexCombinations(Ndim, Np)
-        ]
+    if conservation
+        kets_flr = BitVector[
+                    let v = falses(Ns)
+                        v[q] .= true
+                        v
+                    end for q ∈ CoolLexCombinations(Ns, Np)
+                    ]
+        if Nflr > 1
+            all_combinations = Iterators.product(ntuple(_ -> kets_flr, Nflr)...)
+            kets = []
+            for combination in all_combinations
+                combined_bitvector = vcat(combination...)
+                push!(kets, combined_bitvector)
+            end
+        else
+            kets = kets_flr
+        end
     else
-        BitVector[bvector(m, Ndim) for m ∈ 0:(2^Ndim-1)]
+        kets = BitVector[bvector(m, Ndim) for m ∈ 0:(2^Ndim-1)]
     end
     sort!(kets,by=count)
     indexdict = Dict(kets[i] => i for i ∈ eachindex(kets))

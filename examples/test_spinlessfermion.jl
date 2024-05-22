@@ -7,6 +7,7 @@ Ns = L
 Np = 0
 
 ## test basis and ladder operators
+ϕ = FBbasis(Ns, 2, :fermion, true)
 ϕ = FBbasis(Ns, Np, :fermion, false)
 # Define the BitVectors
 v = ϕ.kets[3]
