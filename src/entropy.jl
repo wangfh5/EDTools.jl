@@ -1,45 +1,87 @@
-# density_matrix
+"""
+    density_matrix(ψ)
+Turn a state vector into a pure-state density matrix.
+"""
 @inline function density_matrix(ψ)
     return Hermitian(ψ * ψ')
 end
 
-function rdm_generator(ϕ::FBbasis, sites::Vector{Int})
-    @assert sites == unique(sites)
-    A = falses(ϕ.n)
-    A[sites] .= true
+"""
+    rdm_generator(ϕ::FBbasis, Asites::Vector{Int})
+Generate a function used to calculates the reduced density matrix of a subsystem A, 
+according to the basis `ϕ` and the sites `Asites` in subsystem A.
+"""
+function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true)
+    @assert Asites == unique(Asites)
+    Nflr = ϕ.Nflr
+    Ns = ϕ.Ns
+    Hdim = ϕ.Hdim
+    # setup subspace A and B
+    A = falses(ϕ.Ndim)
+    for i ∈ 1:Nflr
+        A[Ns*(i-1) .+ Asites] .= true
+    end
     B = (A .== false)
     ϕA = unique(k[A] for k ∈ ϕ.kets)
     ϕB = unique(k[B] for k ∈ ϕ.kets)
     idA = Dict(ϕA[i] => i for i ∈ eachindex(ϕA))
     idB = Dict(ϕB[i] => i for i ∈ eachindex(ϕB))
-    nA = length(ϕA)
-    N = ϕ.N
+    AHdim = length(ϕA)
+    # map the |ket⟩⟨bra| composite indices to subspace A
     ψids = Tuple{Int,Int}[(idA[k[A]], idB[k[B]]) for k ∈ ϕ.kets]
-    ρids = LinearIndices((nA,nA))
-    sumids = Tuple{Int,Int,Int}[]
-    ip = iq = rp = rq = 0
-    @inbounds for p ∈ 1:ϕ.N, q ∈ 1:ϕ.N
-        ip, rp = ψids[p]
-        iq, rq = ψids[q]
-        if rp == rq
-            push!(sumids, (p,q,ρids[ip,iq]))
+    ρids = LinearIndices((AHdim,AHdim))
+    mapids = Tuple{Int,Int,Int}[]
+    pA = qA = pB = qB = 0
+    @inbounds for p ∈ 1:Hdim, q ∈ 1:Hdim
+        pA, pB = ψids[p]
+        qA, qB = ψids[q]
+        if pB == qB # ⟨ϕB|p⟩⟨q|ϕB⟩ ≠ 0
+            push!(mapids, (p,q,ρids[pA,qA]))
         end
     end
-    function ρA(ψ)
-        @assert length(ψ) == N
-        ρ = zeros(ComplexF64, nA, nA)
-        for (i,j,k) ∈ sumids
-            ρ[k] += ψ[i] * ψ[j]'
+    function ρA_pure(ψ)::Matrix{Complex{Float64}}
+        @assert length(ψ) == Hdim
+        ρA = zeros(ComplexF64, AHdim, AHdim)
+        for (i,j,k) ∈ mapids
+            ρA[k] += ψ[i] * ψ[j]'
         end
-        return ρ
+        return ρA
     end
-    return ρA
+    function ρA_mixed(ρ::Matrix{Complex{Float64}})::Matrix{Complex{Float64}}
+        @assert size(ρ,1) == Hdim
+        ρA = zeros(ComplexF64, AHdim, AHdim)
+        for (i,j,k) ∈ mapids
+            ρA[k] += ρ[i,j]
+        end
+        return ρA
+    end
+    return pure ? ρA_pure : ρA_mixed
 end
 
 xlogx(x::Real) = x>0 ? x*log(x) : 0.0
-function vonNeumann_entropy(ρ)
+"""
+    vonNeumann_entropy(ρ::Matrix{Complex{Float64}})
+Calculate the von Neumann entropy of a density matrix `ρ`. 
+S = -tr(ρ*log(ρ))
+"""
+function vonNeumann_entropy(ρ::Matrix{Complex{Float64}})
     λ = eigvals(ρ)
     S = -sum(xlogx, λ)
-    # S = -tr(ρ*log(ρ))
     return S
+end
+
+"""
+    Renyi_entropy(ρ::Matrix{Complex{Float64}}, α::Float64)
+Calculate the Renyi entropy of a density matrix `ρ` with the order `α`.
+S(α) = 1/(1-α) * log(tr(ρ^α))
+"""
+function Renyi_entropy(ρ::Matrix{Complex{Float64}}, α::Float64)
+    if α == 1.0
+        return vonNeumann_entropy(ρ)
+    else
+        λ = eigvals(ρ)
+        S = log(sum(λ.^α))
+        S = S/(1-α)
+        return S
+    end
 end

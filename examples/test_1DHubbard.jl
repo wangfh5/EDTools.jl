@@ -27,6 +27,7 @@ H_potential += sum(densities(i;flr=2, α=-μ, ϕ=ϕ) for i in 1:Ns)
 H_hubbard = sum(hubbard(i; α=U, ϕ=ϕ) for i in 1:Ns)
 H = H_hopping + H_potential + H_hubbard
 H_dense = H |> Matrix
+ishermitian(H_dense)
 H_eigen, H_eigvec = eigen(H_dense)
 
 ## quspin calculation

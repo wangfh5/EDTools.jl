@@ -14,7 +14,7 @@ struct FBbasis
     Nflr::Int               # flavor number (e.g., different spin, 1 for spin up, 2 for spin down)
     Np::Int                 # occupied site number / total particles per flavor
     Ndim::Int               # total degree of freedom, Ns*Nflr
-    Hdim::Int               # the dimension of the Hilbert space, 2^Ndim
+    Hdim::Int               # the dimension of the Hilbert space; for Fock space Hdim = 2^Ndim
     ε::Int                  # sign, +1 for hard core boson / -1 for fermion
     stype::Symbol           # :hcboson / :fermion
     conservation::Bool      # particle number conservation

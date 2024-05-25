@@ -20,11 +20,15 @@ function hopping(i::Int,j::Int; flr::NTuple{2,Int}=(1,1), α=I, ϕ=nothing)
     return OpTerm(ddLadder(j; f=flr[2]),uuLadder(i; f=flr[1]); α=α, ϕ=ϕ)
 end
 """
-    pairing(i::Int,j::Int; flr::NTuple{2,Int}=(1,1), α=I, ϕ=nothing)
-pairing operator between site `i` and site `j`, Δ†ᵢⱼ = a†ᵢa†ⱼ
+    pairing(i::Int,j::Int; flr::NTuple{2,Int}=(1,1), dag::Bool=true, α=I, ϕ=nothing)
+pairing operator between site `i` and site `j`, Δ†ᵢⱼ = a†ᵢa†ⱼ (`dag`=true) or Δᵢⱼ = aᵢaⱼ (`dag`=false)
 """
-function pairing(i::Int,j::Int; flr::NTuple{2,Int}=(1,1), α=I, ϕ=nothing)
-    return OpTerm(uuLadder(j; f=flr[2]),uuLadder(i; f=flr[1]); α=α, ϕ=ϕ)
+function pairing(i::Int,j::Int; flr::NTuple{2,Int}=(1,1), dag::Bool=true, α=I, ϕ=nothing)
+    if dag
+        return OpTerm(uuLadder(j; f=flr[2]),uuLadder(i; f=flr[1]); α=α, ϕ=ϕ)
+    else
+        return OpTerm(ddLadder(j; f=flr[2]),ddLadder(i; f=flr[1]); α=α, ϕ=ϕ)
+    end
 end
 """
     densities(i::Int; flr::Int=1, α=I, ϕ=nothing)
