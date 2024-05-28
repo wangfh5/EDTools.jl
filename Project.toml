@@ -1,6 +1,6 @@
 name = "EDTools"
 uuid = "b244fa23-2ce2-40ec-9d2c-a3d959ad655c"
-authors = ["NyaNyaNya~ <pde2718zt@gmail.com>"]
+authors = ["NyaNyaNya~ <pde2718zt@gmail.com>","wangfh5 <wangfohong@126.com>"]
 version = "0.1.0"
 
 [deps]
