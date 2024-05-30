@@ -6,7 +6,7 @@ using EDTools
 using LinearAlgebra, SparseArrays, Arpack
 using DelimitedFiles
 
-L = 6
+L = 4
 Ns = L
 Np = Int(Ns/2)
 Nflr = 2
@@ -48,7 +48,7 @@ for LA ∈ 1:L
 end
 close(io)
 
-## Partial transpose and negativity
+## Untwisted partial transpose and negativity
 psi_GS = ketinFock(psi_GS,ϕ)
 EN2 = zeros(ComplexF64, Ns+1)
 file_path = "negativity.out"
@@ -57,7 +57,24 @@ for LA ∈ 0:L
     Asites = (LA == 0) ? nothing : collect(1:LA)
     ρTB_frompure = ptdm_generator(ϕ, Asites)
     ρTB = ρTB_frompure(psi_GS)
-    EN2[LA+1] = Renyi_negativity(ρTB,2.0)
+    print("LA = $LA, ρTB ", (ishermitian(ρTB) ? "is" : "is NOT" ) ," hermitian.\n" ) # pseudo hermitian
+    EN2[LA+1] = Renyi_negativity(ρTB,3.0)
+    write(io, "LA = $LA, Negativity = $(EN2[LA+1])\n")
+    flush(io)
+end
+close(io)
+
+## Twisted partial transpose and negativity
+psi_GS = ketinFock(psi_GS,ϕ)
+EN2 = zeros(ComplexF64, Ns+1)
+file_path = "negativity.out"
+io = open(file_path, "w")
+for LA ∈ 0:L
+    Asites = (LA == 0) ? nothing : collect(1:LA)
+    ρTB_frompure = ptdm_generator(ϕ, Asites; twisted=true)
+    ρTB = ρTB_frompure(psi_GS)
+    print("LA = $LA, ρTB ", (ishermitian(ρTB) ? "is" : "is not" ) ," hermitian.\n" ) # always hermitian
+    EN2[LA+1] = Renyi_negativity(ρTB,4.0)
     write(io, "LA = $LA, Negativity = $(EN2[LA+1])\n")
     flush(io)
 end

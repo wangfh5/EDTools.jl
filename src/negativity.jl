@@ -28,15 +28,15 @@ end
 
 
 """
-    ptdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true)
+    ptdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true, twisted::Bool=false)
 Generate a function used to calculates the partially tranposed density matrix of a subsystem A, or the partial tranpose of ρ w.r.t. subsystem B. 
 `ϕ`: the basis of the full Hilbert space.
 `Asites`: an array of indices of subsystem A, starting from 1. 
 """
-function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true)
+function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, twisted::Bool=false)
     @assert isnothing(Asites) ? true : (Asites == unique(Asites))
     if (ϕ.Hdim < 2^(ϕ.Ndim)) 
-        print("The partial transpose should be perfromed in the Fock space! We first change to the Fock space basis and then generate the ptdm function.\n")
+        @warn "The partial transpose should be perfromed in the Fock space! We first change to the Fock space basis and then generate the ptdm function."
         ϕ = FBbasis(ϕ.Ns, 0, ϕ.stype, false; Nflr=ϕ.Nflr)
     end
     Nflr = ϕ.Nflr
@@ -56,7 +56,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
         phases = []
     end
     ρids = LinearIndices((Hdim,Hdim))
-    # (p,q)=(pApB,qAqB) => (i,j)=(pAqB,qApB)
+    # |p⟩⟨q|=|pA,pB⟩⟨qA,qB| => |i⟩⟨j|=|pA,qB⟩⟨qA,pB|
     @inbounds for p ∈ 1:Hdim, q ∈ 1:Hdim
         ketp = ϕ.kets[p]
         ketq = ϕ.kets[q]
@@ -79,6 +79,9 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
             τ_pB = sum(ketpB)
             τ_qB = sum(ketqB)
             parity_factor = mod(τ_pB + τ_qB, 2)/2 + (τ_pA + τ_qA)*(τ_pB + τ_qB)
+            if twisted
+                parity_factor += τ_pB
+            end
             push!(phases, parity_factor)
         end
 
@@ -139,8 +142,12 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
         if all(isapprox.(imag.(λ), 0))
             λ = real.(λ)
         else
-            print("Not all the eigenvalues of rho_FPT are real!")
+            print("Not all the eigenvalues of rho_FPT are real!\n")
         end
+        # print("Sum of eigenvalues: $(sum(λ))\n")
+        # print("Sum of eigenvalues^2: $(sum(λ.^2.0))\n")
+        # print("Sum of eigenvalues^3: $(sum(λ.^3.0))\n")
+        # print("Sum of eigenvalues^4: $(sum(λ.^4.0))\n")
         Renyi_neg = log(sum(λ.^α))
         Renyi_neg = Renyi_neg/(1-α)
         # if !(imag(Renyi_neg) < 1e-10)
