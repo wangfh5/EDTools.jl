@@ -9,6 +9,7 @@ module EDTools
 using Combinatorics
 using LinearAlgebra
 using SparseArrays
+using Printf
 # using SuiteSparseGraphBLAS
 # import Base.conj
 # import Base.*

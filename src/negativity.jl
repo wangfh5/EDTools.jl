@@ -32,8 +32,11 @@ end
 Generate a function used to calculates the partially tranposed density matrix of a subsystem A, or the partial tranpose of ρ w.r.t. subsystem B. 
 `ϕ`: the basis of the full Hilbert space.
 `Asites`: an array of indices of subsystem A, starting from 1. 
+`pure`: If true, the returned function takes a ket in the full Hilbert space as input; otherwise, it takes a density matrix.
+`twisted`: If true, the twisted partial transpose is considered for fermions.
+`BPT`: If true, the conventional bosonic partial transpose is chosen, even for fermions.
 """
-function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, twisted::Bool=false)
+function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, twisted::Bool=false, BPT::Bool=false)
     @assert isnothing(Asites) ? true : (Asites == unique(Asites))
     if (ϕ.Hdim < 2^(ϕ.Ndim)) 
         @warn "The partial transpose should be perfromed in the Fock space! We first change to the Fock space basis and then generate the ptdm function."
@@ -52,7 +55,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
     B = (A .== false)
     # map the |ket⟩⟨bra| composite indices before and after partial transpose w.r.t. subsystem B
     mapids = Tuple{Int,Int,Int}[]
-    if ϕ.stype == :fermion
+    if (ϕ.stype == :fermion && !BPT)
         phases = []
     end
     ρids = LinearIndices((Hdim,Hdim))
@@ -73,7 +76,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
         push!(mapids, (p,q,ρids[i,j]))
 
         # calculate phase factor
-        if ϕ.stype == :fermion
+        if (ϕ.stype == :fermion && !BPT)
             τ_pA = sum(ketpA)
             τ_qA = sum(ketqA)
             τ_pB = sum(ketpB)
@@ -96,7 +99,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
         for (i,j,k) ∈ mapids
             it += 1
             ρTB[k] = ψ[i] * ψ[j]'
-            if ϕ.stype == :fermion
+            if (ϕ.stype == :fermion && !BPT)
                 ρTB[k] *= (-1+0im)^phases[it]
             end
         end
@@ -109,7 +112,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
         for (i,j,k) ∈ mapids
             it += 1
             ρTB[k] = ρ[i,j]
-            if ϕ.stype == :fermion
+            if (ϕ.stype == :fermion && !BPT)
                 ρTB[k] *= (-1+0im)^phases[it]
             end
         end
@@ -139,7 +142,7 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
     else
         λ = @inline eigvals(ρ)
         # check if the eigenvalues are real
-        if all(isapprox.(imag.(λ), 0))
+        if all(abs.(imag.(λ)) .< 1e-10 )
             λ = real.(λ)
         else
             print("Not all the eigenvalues of rho_FPT are real!\n")
@@ -148,14 +151,23 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
         # print("Sum of eigenvalues^2: $(sum(λ.^2.0))\n")
         # print("Sum of eigenvalues^3: $(sum(λ.^3.0))\n")
         # print("Sum of eigenvalues^4: $(sum(λ.^4.0))\n")
-        Renyi_neg = log(sum(λ.^α))
-        Renyi_neg = Renyi_neg/(1-α)
-        # if !(imag(Renyi_neg) < 1e-10)
-        #     print("Renyi negativity $(Renyi_neg) is not real!")
+        trρα = sum(λ.^α)
+        if abs(imag(trρα)) > 1e-10 
+            @warn "The trace of ρ^α is not real!\n"
+        elseif abs(real(trρα)) < 1e-10
+            @warn "The trace of ρ^α is nearly zero, trρα = $(trρα), the log can not be done. \n"
+        elseif real(trρα) < 0
+            @warn "The trace of ρ^α is negative, trρα = $(trρα), the log can not be done. \n"
+        else
+            trρα = real(trρα)
+        end
+        Renyi_neg = log(trρα)/(1-α)
+        # if !(abs(imag(Renyi_neg)) < 1e-10)
+        #     print("Renyi negativity $(Renyi_neg) is not real!\n")
         #     # output the eigenvalues (sort by real part)
         #     λ = sort(λ, by=abs)
         #     for i in eachindex(λ)
-        #         print("Eigenvalue $(@sprintf("%4i", i)): $(@sprintf("%16.8e", real(λ[i]))) $(@sprintf("%16.8e", imag(λ[i])))")
+        #         print("Eigenvalue $(@sprintf("%4i", i)): $(@sprintf("%16.8e", real(λ[i]))) $(@sprintf("%16.8e", imag(λ[i])))\n")
         #     end
         #     print("Sum of eigenvalues: $(sum(λ))")
         # end

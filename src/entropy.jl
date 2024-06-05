@@ -11,7 +11,7 @@ end
 Generate a function used to calculates the reduced density matrix of a subsystem A, 
 according to the basis `ϕ` and the sites `Asites` in subsystem A.
 """
-function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true)
+function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true, newbasis::Bool=false)
     @assert Asites == unique(Asites)
     Nflr = ϕ.Nflr
     Ns = ϕ.Ns
@@ -22,11 +22,11 @@ function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true)
         A[Ns*(i-1) .+ Asites] .= true
     end
     B = (A .== false)
-    ϕA = unique(k[A] for k ∈ ϕ.kets)
-    ϕB = unique(k[B] for k ∈ ϕ.kets)
-    idA = Dict(ϕA[i] => i for i ∈ eachindex(ϕA))
-    idB = Dict(ϕB[i] => i for i ∈ eachindex(ϕB))
-    AHdim = length(ϕA)
+    ketsA = unique(k[A] for k ∈ ϕ.kets)
+    ketsB = unique(k[B] for k ∈ ϕ.kets)
+    idA = Dict(ketsA[i] => i for i ∈ eachindex(ketsA))
+    idB = Dict(ketsB[i] => i for i ∈ eachindex(ketsB))
+    AHdim = length(ketsA)
     # map the |ket⟩⟨bra| composite indices to subspace A
     ψids = Tuple{Int,Int}[(idA[k[A]], idB[k[B]]) for k ∈ ϕ.kets]
     ρids = LinearIndices((AHdim,AHdim))
@@ -35,7 +35,7 @@ function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true)
     @inbounds for p ∈ 1:Hdim, q ∈ 1:Hdim
         pA, pB = ψids[p]
         qA, qB = ψids[q]
-        if pB == qB # ⟨ϕB|p⟩⟨q|ϕB⟩ ≠ 0
+        if pB == qB # ⟨ketsB|p⟩⟨q|ketsB⟩ ≠ 0
             push!(mapids, (p,q,ρids[pA,qA]))
         end
     end
@@ -55,7 +55,16 @@ function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true)
         end
         return ρA
     end
-    return pure ? ρA_pure : ρA_mixed
+    if newbasis
+        ϕA = FBbasis(ketsA, ϕ.stype, ϕ.conservation; Nflr=Nflr)
+        if pure
+            return ρA_pure, ϕA
+        else
+            return ρA_mixed, ϕA
+        end
+    else
+        return pure ? ρA_pure : ρA_mixed
+    end
 end
 
 xlogx(x::Real) = x>0 ? x*log(x) : 0.0
