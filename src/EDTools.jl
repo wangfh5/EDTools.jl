@@ -22,7 +22,7 @@ include("operators.jl")
 include("conventions.jl")
 include("entropy.jl")
 include("negativity.jl")
-# include("extratools.jl")
+include("lattice.jl")
 
 for n in names(@__MODULE__; all=true)
     if Base.isidentifier(n) && n ∉ (Symbol(@__MODULE__), :eval, :include)
