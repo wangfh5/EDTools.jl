@@ -23,28 +23,29 @@ return the periodic boundary condition (PBC) shifted site `npbc(p+s)` with forma
 end
 
 """
-    find_nn_list(L::NTuple{N,Int}, nn_vec::Vector{NTuple{N,Int}}; obc::Bool=false) where N
-Find the list of neighbors at distance `nn_vec` for each site in the lattice with size `L`.
+    find_nn_list(L::NTuple{N,Int}, nn_vec::Vector{NTuple{N,Int}}; pbc::NTuple{N,Bool}=ntuple(i -> true, N)) where N
+Find the list of neighbors at distance `nn_vec` for each site in the `N`-dimensional lattice with size `L`. 
+The boundary condition along each dimension is determined by the `pbc` tuple. By default, all dimensions are PBC.
+Note that for 2D lattice, `pbc = (true, false)` corresponds to y (different rows) PBC and x (different columns) OBC.
 """
-function find_nn_list(L::NTuple{N,Int}, nn_vec::Vector{NTuple{N,Int}}; obc::Bool=false) where N
+function find_nn_list(L::NTuple{N,Int}, nn_vec::Vector{NTuple{N,Int}}; pbc::NTuple{N,Bool}=ntuple(i -> true, N)) where N
     Lids = LinearIndices(L)
-    if obc
+    if all(pbc)
+        nn_list = [
+            [Lids[pbcshift(p,s,L)] for s ∈ nn_vec]
+            for p ∈ CartesianIndices(L)
+        ]
+    else
         nn_list = [
             [
                 let pn = Tuple(p) .+ Tuple(s)
-                    if all(1 .<= pn .<= L)
-                        Lids[CartesianIndex(pn)]
+                    if all(map(x -> x[1] || x[2], zip(1 .<= pn .<= L, pbc)))
+                        Lids[npbc(pn, L)]
                     else
                         nothing
                     end
                 end for s ∈ nn_vec
-            ] |> filter(!isnothing)
-            for p ∈ CartesianIndices(L)
-        ]
-    else
-        Lids = LinearIndices(L)
-        nn_list = [
-            [Lids[pbcshift(p,s,L)] for s ∈ nn_vec]
+            ]
             for p ∈ CartesianIndices(L)
         ]
     end
