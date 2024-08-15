@@ -32,51 +32,48 @@ H_eigen, H_eigvec = eigen(H_dense)
 
 ## quspin calculation
 using PyCall
+np = pyimport("numpy")
+quspin = pyimport("quspin.operators")
+spinful_fermion_basis_1d = pyimport("quspin.basis").spinful_fermion_basis_1d
 
-py"""
-import numpy as np
-from quspin.operators import hamiltonian # Hamiltonians and operators
-from quspin.basis import spinful_fermion_basis_1d
+N_up = div(L, 2) + mod(L, 2)
+N_down = div(L, 2)
 
-# basis = spinful_fermion_basis_1d($L) # the whole Fock space
-N_up = $(L)//2 + $(L) % 2 # number of fermions with spin up
-N_down = $(L)//2 # number of fermions with spin down
-basis = spinful_fermion_basis_1d($L,Nf=(N_up,N_down)) # the subspace with fixed particle number
+basis = spinful_fermion_basis_1d(L, Nf=(N_up, N_down))
 
-# define site-coupling lists
-hop_right=[[-$t,i,(i+1)%$L] for i in range($L)] #PBC
-hop_left= [[+$t,i,(i+1)%$L] for i in range($L)] #PBC 
-pot=[[-$μ,i] for i in range($L)] # -\mu \sum_j n_{j \sigma}
-interact=[[$U,i,i] for i in range($L)] # U \sum_j n_{j,up} n_{j,down}
-# define static and dynamic lists
-static=[
-        ['+-|',hop_left],  # up hops left
-        ['-+|',hop_right], # up hops right
-        ['|+-',hop_left],  # down hops left
-        ['|-+',hop_right], # down hops right
-        ['n|',pot],        # up on-site potention
-        ['|n',pot],        # down on-site potention
-        ['n|n',interact]   # up-down interaction
-                                ]
-dynamic=[]
-# build Hamiltonian
-# no_checks = dict(check_pcon=False,check_symm=False,check_herm=False)
-# H=hamiltonian(static,dynamic,basis=basis,dtype=np.float64,**no_checks)
-H=hamiltonian(static,dynamic,basis=basis,dtype=np.float64)
+hop_right = [(-t, i, (i + 1) % L) for i in 0:L-1]
+hop_left = [(+t, i, (i + 1) % L) for i in 0:L-1]
+pot = [(-μ, i) for i in 0:L-1]
+interact = [(U, i, i) for i in 0:L-1]
+# turn the list of tuples into a list of python lists (which quspin expects)
+hop_right_py = [pybuiltin("list")(x) for x in hop_right]
+hop_left_py = [pybuiltin("list")(x) for x in hop_left]
+pot_py = [pybuiltin("list")(x) for x in pot]
+interact_py = [pybuiltin("list")(x) for x in interact]
 
-# diagonalise H
-E_all, psi_all=H.eigh() 
-"""
+static = pybuiltin("list")([
+    pybuiltin("list")(["+-|", hop_left_py]),  # up hops left
+    pybuiltin("list")(["-+|", hop_right_py]), # up hops right
+    pybuiltin("list")(["|+-", hop_left_py]),  # down hops left
+    pybuiltin("list")(["|-+", hop_right_py]), # down hops right
+    pybuiltin("list")(["n|", pot_py]),        # up on-site potential
+    pybuiltin("list")(["|n", pot_py]),        # down on-site potential
+    pybuiltin("list")(["n|n", interact_py])   # up-down interaction
+])
+dynamic = pybuiltin("list")([])
+
+H = quspin.hamiltonian(static, dynamic, basis=basis, dtype=np.float64)
+E_all, psi_all = H.eigh()
 
 ## compare the results
-size(H_eigen) == size(py"E_all")
+size(H_eigen) == size(E_all)
 print(H_eigen)
-print(sort(py"E_all"))
+print(sort(E_all))
 for i in eachindex(H_eigen)
-    if isapprox(sort(H_eigen)[i], sort(py"E_all")[i])
+    if isapprox(sort(H_eigen)[i], sort(E_all)[i])
         println("Eigenvalue $i is the same")
     else
         println("Eigenvalue $i is different, with" * 
-            " EDTools: $(sort(H_eigen)[i]), quspin: $(sort(py"E_all")[i])")
+            " EDTools: $(sort(H_eigen)[i]), quspin: $(sort(E_all)[i])")
     end
 end

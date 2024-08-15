@@ -31,27 +31,48 @@ function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true, newbas
     ψids = Tuple{Int,Int}[(idA[k[A]], idB[k[B]]) for k ∈ ϕ.kets]
     ρids = LinearIndices((AHdim,AHdim))
     mapids = Tuple{Int,Int,Int}[]
+    if (ϕ.stype == :fermion)
+        phases = []
+    end
     pA = qA = pB = qB = 0
     @inbounds for p ∈ 1:Hdim, q ∈ 1:Hdim
         pA, pB = ψids[p]
         qA, qB = ψids[q]
         if pB == qB # ⟨ketsB|p⟩⟨q|ketsB⟩ ≠ 0
             push!(mapids, (p,q,ρids[pA,qA]))
+            # for fermions, figure out the phase for move all the Asites to the left of the B sites
+            # |B⋯B A₁ B⋯B A₂ B⋯B⟩ → (-1)^[(occupied B left to A₁)*A₁ + (occupied B left to A₂)*A₂] |A₁ A₂ B⋯B B⋯B⟩
+            if ϕ.stype == :fermion
+                phase = 1.0
+                for ket in (ϕ.kets[p], ϕ.kets[q])
+                    ltip = count = 0
+                    for i in filter(x -> A[x], 1:ϕ.Ndim)
+                        count += sum(ket[ltip+1:i-1])
+                        phase *= (-1.0)^(count * ket[i])
+                        ltip = i
+                    end
+                end
+                push!(phases, phase)
+            end
         end
     end
     function ρA_pure(ψ)::Matrix{Complex{Float64}}
         @assert length(ψ) == Hdim
         ρA = zeros(ComplexF64, AHdim, AHdim)
+        it = 0
         for (i,j,k) ∈ mapids
-            ρA[k] += ψ[i] * ψ[j]'
+            it += 1
+            ρA[k] += ψ[i] * ψ[j]' * (ϕ.stype == :fermion ? phases[it] : 1.0)
         end
         return ρA
     end
     function ρA_mixed(ρ::Matrix{Complex{Float64}})::Matrix{Complex{Float64}}
         @assert size(ρ,1) == Hdim
         ρA = zeros(ComplexF64, AHdim, AHdim)
+        it = 0
         for (i,j,k) ∈ mapids
-            ρA[k] += ρ[i,j]
+            it += 1
+            ρA[k] += ρ[i,j] * (ϕ.stype == :fermion ? phases[it] : 1.0)
         end
         return ρA
     end
