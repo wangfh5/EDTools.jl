@@ -1,8 +1,9 @@
 """
-    ketinFock(old_ket::Matrix,ϕ::FBbasis)
-Convert a ket in the given basis `ϕ` to the corresponding ket in the Fock space.
+    ketinFock(old_ket::AbstractMatrix{T},ϕ::FBbasis) where T<:Union{Float64, ComplexF64}
+Convert a ket in the given basis `ϕ` (which may be a subspace of the Fock space, e.g., number conserving or with parity) 
+to the corresponding ket in the Fock space.
 """
-function ketinFock(old_ket::Matrix,ϕ::FBbasis)
+function ketinFock(old_ket::AbstractMatrix{T},ϕ::FBbasis) where T<:Union{Float64, ComplexF64}
     @assert length(old_ket) == ϕ.Hdim
     Fockϕ = FBbasis(ϕ.Ns, 0, ϕ.stype, false; Nflr=ϕ.Nflr)
     new_ket = zeros(ComplexF64, Fockϕ.Hdim)
@@ -13,10 +14,11 @@ function ketinFock(old_ket::Matrix,ϕ::FBbasis)
 end
 
 """
-    rhoinFock(ρ::Matrix{Complex{Float64}},ϕ::FBbasis)
-Convert a density matrix in the given basis `ϕ` to the corresponding density matrix in the Fock space.
+    rhoinFock(ρ::AbstractMatrix{T},ϕ::FBbasis) where T<:Union{Float64, ComplexF64}
+Convert a density matrix in the given basis `ϕ` (which may be a subspace of the Fock space, e.g., number conserving or with parity) 
+to the corresponding density matrix in the Fock space.
 """
-function rhoinFock(ρ::Matrix{Complex{Float64}},ϕ::FBbasis)
+function rhoinFock(ρ::AbstractMatrix{T},ϕ::FBbasis) where T<:Union{Float64, ComplexF64}
     @assert size(ρ) == (ϕ.Hdim, ϕ.Hdim)
     Fockϕ = FBbasis(ϕ.Ns, 0, ϕ.stype, false; Nflr=ϕ.Nflr)
     new_ρ = zeros(ComplexF64, Fockϕ.Hdim, Fockϕ.Hdim)
@@ -33,7 +35,7 @@ Generate a function used to calculates the partially tranposed density matrix of
 `ϕ`: the basis of the full Hilbert space.
 `Asites`: an array of indices of subsystem A, starting from 1. 
 `pure`: If true, the returned function takes a ket in the full Hilbert space as input; otherwise, it takes a density matrix.
-`twisted`: If true, the twisted partial transpose is considered for fermions.
+`twisted`: If true, the twisted partial transpose is considered for fermions. Otherwise, use untwisted partial transpose.
 `BPT`: If true, the conventional bosonic partial transpose is chosen, even for fermions.
 """
 function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, twisted::Bool=false, BPT::Bool=false)
@@ -105,7 +107,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
         end
         return ρTB
     end
-    function ρTB_mixed(ρ::Matrix{Complex{Float64}})::Matrix{Complex{Float64}}
+    function ρTB_mixed(ρ::AbstractMatrix{T})::Matrix{Complex{Float64}} where T<:Union{Float64, ComplexF64}
         @assert size(ρ) == (Hdim,Hdim) "The input state should be in the Fock space! (You can use function `rhoinFock` to convert first.)"
         ρTB = zeros(ComplexF64, Hdim, Hdim)
         it = 0
@@ -122,21 +124,21 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
 end
 
 """
-    log_negativity(ρ::Matrix{Complex{Float64}})
+    log_negativity(ρ::AbstractMatrix{T}) where T<:Union{Float64, ComplexF64}
 Calculate the logarithmic negativity of a density matrix `ρ`.
 E_N = log(tr(sqrt(ρ†ρ)))
 """
-function log_negativity(ρ::Matrix{Complex{Float64}})
+function log_negativity(ρ::AbstractMatrix{T}) where T<:Union{Float64, ComplexF64}
     q = svdvals(ρ)
     return log(sum(q))
 end
 
 """
-    Renyi_negativity(ρ::Matrix{Complex{Float64}}, α::Float64)
+    Renyi_negativity(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
 Calculate the Renyi negativity of a density matrix `ρ` with the order `α`.
 E_N(α) = 1/(1-α) * log(tr(ρ^α))
 """
-@inline function Renyi_negativity(ρ::Matrix{Complex{Float64}}, α::Float64)
+@inline function Renyi_negativity(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
     if α == 1.0
         return log_negativity(ρ)
     else

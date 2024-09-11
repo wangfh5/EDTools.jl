@@ -1,9 +1,26 @@
+using RandomMatrices
 """
     density_matrix(ψ)
 Turn a state vector into a pure-state density matrix.
 """
 @inline function density_matrix(ψ)
     return Hermitian(ψ * ψ')
+end
+"""
+    random_density_matrix(ϕ::FBbasis; pure::Bool=true, rank::Int=ϕ.Hdim)
+Generate a random density matrix of dimension `Hdim` with the option of being pure or mixed.
+"""
+function random_density_matrix(ϕ::FBbasis; pure::Bool=true, rank::Int=ϕ.Hdim)
+    Hdim = ϕ.Hdim
+    if pure
+        ψ = randn(ComplexF64, Hdim)
+        ψ /= norm(ψ)
+        return density_matrix(ψ)
+    else
+        U = rand(Haar(2),Hdim)
+        Apos = U'*Diagonal( [rand(rank);zeros(Hdim-rank)] )*U
+        return Hermitian(Apos/tr(Apos))
+    end
 end
 
 """
@@ -90,22 +107,22 @@ end
 
 xlogx(x::Real) = x>0 ? x*log(x) : 0.0
 """
-    vonNeumann_entropy(ρ::Matrix{Complex{Float64}})
+    vonNeumann_entropy(ρ::AbstractMatrix{T}) where T<:Union{Float64, ComplexF64}
 Calculate the von Neumann entropy of a density matrix `ρ`. 
 S = -tr(ρ*log(ρ))
 """
-function vonNeumann_entropy(ρ::Matrix{Complex{Float64}})
+function vonNeumann_entropy(ρ::AbstractMatrix{T}) where T<:Union{Float64, ComplexF64}
     λ = eigvals(ρ)
     S = -sum(xlogx, λ)
     return S
 end
 
 """
-    Renyi_entropy(ρ::Matrix{Complex{Float64}}, α::Float64)
+    Renyi_entropy(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
 Calculate the Renyi entropy of a density matrix `ρ` with the order `α`.
 S(α) = 1/(1-α) * log(tr(ρ^α))
 """
-function Renyi_entropy(ρ::Matrix{Complex{Float64}}, α::Float64)
+function Renyi_entropy(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
     if α == 1.0
         return vonNeumann_entropy(ρ)
     else
