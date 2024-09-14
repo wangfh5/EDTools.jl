@@ -43,9 +43,9 @@ end
 """
     FBbasis(kets::Vector{BitVector}, stype::Symbol, conservation::Bool=false, parity::Int=-1; Nflr::Int=1)
 Construct a `FBbasis` object with the given basis kets. 
-`stype`: `:hcboson` for hard core boson | `:fermion` for spinless fermion;
-`conservation`: true for the subspace with fixed particle number, false for the full Fock space;
-`parity`: 0 for even, 1 for odd, -1 for mixed. 
+- `stype`: `:hcboson` for hard core boson | `:fermion` for spinless fermion;
+- `conservation`: true for the subspace with fixed particle number, false for the full Fock space;
+- `parity`: 0 for even, 1 for odd, -1 for mixed. 
 """
 function FBbasis(kets::Vector{BitVector}, stype::Symbol, conservation::Bool=false, parity::Int=-1; Nflr::Int=1)
     @assert stype == :hcboson || stype == :fermion "The stype should be :hcboson or :fermion!"
@@ -68,9 +68,9 @@ end
 """
     FBbasis(Ns::Int, Np::Int, stype::Symbol, conservation::Bool = true)
 Construct a `FBbasis` object with the given site number `Ns` and particle number `Np`.
-`stype`: `:hcboson` for hard core boson | `:fermion` for spinless fermion;
-`conservation`: true for the subspace with fixed particle number, false for the full Fock space;
-`parity`: 0 for even, 1 for odd, -1 for mixed. Only has effect when `conservation=false`.
+- `stype`: `:hcboson` for hard core boson | `:fermion` for spinless fermion;
+- `conservation`: true for the subspace with fixed particle number, false for the full Fock space;
+- `parity`: 0 for even, 1 for odd, -1 for mixed. Only has effect when `conservation=false`.
 """
 function FBbasis(Ns::Int, Np::Int, stype::Symbol, conservation::Bool=true, parity::Int=-1; Nflr::Int = 1)
     @assert stype == :hcboson || stype == :fermion "The stype should be :hcboson or :fermion!"

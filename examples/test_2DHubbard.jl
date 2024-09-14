@@ -21,9 +21,9 @@ U = 1.0
 Lids = LinearIndices(L)
 nn_vec = [(1,0),(-1,0),(0,1),(0,-1)]
 # PBC
-nn_list = find_nn_list(L, nn_vec; obc=false)
+nn_list = find_nn_list(L, nn_vec; pbc=(true,true))
 # OBC
-# nn_list = find_nn_list(L, nn_vec; obc=true)
+# nn_list = find_nn_list(L, nn_vec; pbc=(false,false))
 
 # ED using EDTools.jl
 ϕ = FBbasis(Ns, Np, :fermion, true; Nflr=Nflr)
