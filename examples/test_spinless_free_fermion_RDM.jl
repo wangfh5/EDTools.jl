@@ -1,7 +1,10 @@
 # Benchmark the two-point reduced density matrix of free spinless fermions with quspin
 
+# For local development
 using Pkg, Revise
-Pkg.activate("/home/wangfh5/Projects/ed_nega/EDTools.jl")
+Pkg.activate("/home/wangfh5/Projects/ed_nega/EDTools.jl/examples")
+Pkg.develop(path="/home/wangfh5/Projects/ed_nega/EDTools.jl")
+
 using EDTools
 using LinearAlgebra, SparseArrays, Arpack
 using DelimitedFiles
