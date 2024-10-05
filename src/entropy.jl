@@ -28,15 +28,17 @@ end
 Generate a function used to calculates the reduced density matrix of a subsystem A, 
 according to the basis `ϕ` and the sites `Asites` in subsystem A.
 """
-function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true, newbasis::Bool=false)
-    @assert Asites == unique(Asites)
+function rdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, newbasis::Bool=false)
+    @assert isnothing(Asites) ? true : (Asites == unique(Asites))
     Nflr = ϕ.Nflr
     Ns = ϕ.Ns
     Hdim = ϕ.Hdim
     # setup subspace A and B
     A = falses(ϕ.Ndim)
-    for i ∈ 1:Nflr
-        A[Ns*(i-1) .+ Asites] .= true
+    if ~isnothing(Asites)
+        for i ∈ 1:Nflr
+            A[Ns*(i-1) .+ Asites] .= true
+        end
     end
     B = (A .== false)
     ketsA = unique(k[A] for k ∈ ϕ.kets)
@@ -83,7 +85,7 @@ function rdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true, newbas
         end
         return ρA
     end
-    function ρA_mixed(ρ::Matrix{Complex{Float64}})::Matrix{Complex{Float64}}
+    function ρA_mixed(ρ::AbstractMatrix{T})::Matrix{Complex{Float64}} where T<:Union{Float64, ComplexF64}
         @assert size(ρ,1) == Hdim
         ρA = zeros(ComplexF64, AHdim, AHdim)
         it = 0
@@ -127,6 +129,7 @@ function Renyi_entropy(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float6
         return vonNeumann_entropy(ρ)
     else
         λ = eigvals(ρ)
+        λ = map(x -> ((abs(x) < 1e-15) ? 0.0 : x), λ)
         S = log(sum(λ.^α))
         S = S/(1-α)
         return S
