@@ -160,6 +160,7 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
             @warn "The trace of ρ^α is nearly zero, trρα = $(trρα), the log can not be done. \n"
         elseif real(trρα) < 0
             @warn "The trace of ρ^α is negative, trρα = $(trρα), the log can not be done. \n"
+            trρα = complex(real(trρα), 0)
         else
             trρα = real(trρα)
         end
