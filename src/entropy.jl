@@ -118,6 +118,10 @@ function vonNeumann_entropy(ρ::AbstractMatrix{T}) where T<:Union{Float64, Compl
     S = -sum(xlogx, λ)
     return S
 end
+function vonNeumann_entropy(λ::Vector{T}) where T<:Union{Float64, ComplexF64}
+    S = -sum(xlogx, λ)
+    return S
+end
 
 """
     Renyi_entropy(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
@@ -134,4 +138,18 @@ function Renyi_entropy(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float6
         S = S/(1-α)
         return S
     end
+end
+function Renyi_entropy(ρ::AbstractMatrix{T}, αs::Vector{Float64}) where T<:Union{Float64, ComplexF64}
+    λ = eigvals(ρ)
+    λ = map(x -> ((abs(x) < 1e-15) ? 0.0 : x), λ)
+    Ss = zeros(ComplexF64, length(αs))
+    for (i,α) ∈ enumerate(αs)
+        if α == 1.0
+            Ss[i] = vonNeumann_entropy(λ)
+        else
+            Ss[i] = log(sum(λ.^α))
+            Ss[i] = Ss[i]/(1-α)
+        end
+    end
+    return Ss
 end

@@ -155,11 +155,12 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
         # print("Sum of eigenvalues^4: $(sum(λ.^4.0))\n")
         trρα = sum(λ.^α)
         if abs(imag(trρα)) > 1e-10 
-            @warn "The trace of ρ^α is not real!\n"
+            @warn "The trace of ρ^$(α) is not real!\n"
         elseif abs(real(trρα)) < 1e-10
-            @warn "The trace of ρ^α is nearly zero, trρα = $(trρα), the log can not be done. \n"
+            @warn "The trace of ρ^$(α) is nearly zero, trρα = $(trρα), the log can not be done. \n"
+            trρα = complex(real(trρα), 0)
         elseif real(trρα) < 0
-            @warn "The trace of ρ^α is negative, trρα = $(trρα), the log can not be done. \n"
+            @warn "The trace of ρ^$(α) is negative, trρα = $(trρα), the log can not be done. \n"
             trρα = complex(real(trρα), 0)
         else
             trρα = real(trρα)
@@ -176,4 +177,34 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
         # end
         return Renyi_neg
     end
+end
+@inline function Renyi_negativity(ρ::AbstractMatrix{T}, αs::Vector{Float64}) where T<:Union{Float64, ComplexF64}
+    λ = @inline eigvals(ρ)
+    # check if the eigenvalues are real
+    if all(abs.(imag.(λ)) .< 1e-10 )
+        λ = real.(λ)
+    else
+        print("Not all the eigenvalues of rho_FPT are real!\n")
+    end
+    Renyi_negs = zeros(ComplexF64, length(αs))
+    for (i,α) ∈ enumerate(αs)
+        if α == 1.0
+            Renyi_negs[i] = log_negativity(ρ)
+        else
+            trρα = sum(λ.^α)
+            if abs(imag(trρα)) > 1e-10 
+                @warn "The trace of ρ^$(α) is not real!\n"
+            elseif abs(real(trρα)) < 1e-10
+                @warn "The trace of ρ^$(α) is nearly zero, trρα = $(trρα), the log can not be done. \n"
+                trρα = complex(real(trρα), 0)
+            elseif real(trρα) < 0
+                @warn "The trace of ρ^$(α) is negative, trρα = $(trρα), the log can not be done. \n"
+                trρα = complex(real(trρα), 0)
+            else
+                trρα = real(trρα)
+            end
+            Renyi_negs[i] = log(trρα)/(1-α)
+        end
+    end
+    return Renyi_negs
 end
