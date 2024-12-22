@@ -138,7 +138,7 @@ end
 Calculate the Renyi negativity of a density matrix `ρ` with the order `α`.
 E_N(α) = 1/(1-α) * log(tr(ρ^α))
 """
-@inline function Renyi_negativity(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
+@inline function Renyi_negativity(ρ::AbstractMatrix{T}, α::Float64;lcheck::Bool=false) where T<:Union{Float64, ComplexF64}
     if α == 1.0
         return log_negativity(ρ)
     else
@@ -149,10 +149,12 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
         else
             print("Not all the eigenvalues of rho_FPT are real!\n")
         end
-        # print("Sum of eigenvalues: $(sum(λ))\n")
-        # print("Sum of eigenvalues^2: $(sum(λ.^2.0))\n")
-        # print("Sum of eigenvalues^3: $(sum(λ.^3.0))\n")
-        # print("Sum of eigenvalues^4: $(sum(λ.^4.0))\n")
+        if lcheck
+            print("Sum of eigenvalues: $(sum(λ))\n")
+            print("Sum of eigenvalues^2: $(sum(λ.^2.0))\n")
+            print("Sum of eigenvalues^3: $(sum(λ.^3.0))\n")
+            print("Sum of eigenvalues^4: $(sum(λ.^4.0))\n")
+        end
         trρα = sum(λ.^α)
         if abs(imag(trρα)) > 1e-10 
             @warn "The trace of ρ^$(α) is not real!\n"
@@ -178,13 +180,20 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
         return Renyi_neg
     end
 end
-@inline function Renyi_negativity(ρ::AbstractMatrix{T}, αs::Vector{Float64}) where T<:Union{Float64, ComplexF64}
+@inline function Renyi_negativity(ρ::AbstractMatrix{T}, αs::Vector{Float64};lcheck::Bool=false) where T<:Union{Float64, ComplexF64}
     λ = @inline eigvals(ρ)
     # check if the eigenvalues are real
     if all(abs.(imag.(λ)) .< 1e-10 )
         λ = real.(λ)
     else
         print("Not all the eigenvalues of rho_FPT are real!\n")
+    end
+    if lcheck
+        # output the eigenvalues
+        print_eigenvalues_with_degeneracy(λ)
+        for rnk in 1:16
+            print("Sum of eigenvalues^$(rnk): $(sum(λ.^rnk))\n")
+        end
     end
     Renyi_negs = zeros(ComplexF64, length(αs))
     for (i,α) ∈ enumerate(αs)
@@ -207,4 +216,22 @@ end
         end
     end
     return Renyi_negs
+end
+
+function print_eigenvalues_with_degeneracy(eigenvalues::Array{T, 1}; precision::Int = 6) where T<:Union{Float64, ComplexF64}
+    eigenvalue_dict = Dict{T, Int}()
+    for eigval in eigenvalues
+        # 按照指定精度舍入本征值作为字典的键
+        key = round(eigval, digits=precision)
+        eigenvalue_dict[key] = get(eigenvalue_dict, key, 0) + 1
+    end
+
+    # for (eigenvalue, degeneracy) in eigenvalue_dict
+    #     println("Eigenvalue: $(@sprintf("%16.8e", real(eigenvalue))) $(@sprintf("%16.8e", imag(eigenvalue))), Degeneracy: $(degeneracy)")
+    # end
+    # sort by absolute value
+    eigenvalue_dict = sort(collect(eigenvalue_dict), by=x->abs(real(x[1])))
+    for (eigenvalue, degeneracy) in eigenvalue_dict
+        println("Eigenvalue: $(@sprintf("%16.8e", real(eigenvalue))) $(@sprintf("%16.8e", imag(eigenvalue))), Degeneracy: $(degeneracy)")
+    end
 end
