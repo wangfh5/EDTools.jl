@@ -77,17 +77,41 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
         j = ϕ.indexdict[ketj]
         push!(mapids, (p,q,ρids[i,j]))
 
-        # calculate phase factor
-        if (ϕ.stype == :fermion && !BPT)
-            τ_pA = sum(ketpA)
-            τ_qA = sum(ketqA)
-            τ_pB = sum(ketpB)
-            τ_qB = sum(ketqB)
-            parity_factor = mod(τ_pB + τ_qB, 2)/2 + (τ_pA + τ_qA)*(τ_pB + τ_qB)
-            if twisted
-                parity_factor += τ_pB
+        # calculate phase factor for fermions
+        if (ϕ.stype == :fermion)
+            phase = 1.0+0.0im
+            # 1. move all the Asites to the left of the B sites
+            # |B⋯B A₁ B⋯B A₂ B⋯B⟩ → (-1)^[(occupied B left to A₁)*A₁ + (occupied B left to A₂)*A₂] |A₁ A₂ B⋯B B⋯B⟩
+            for ket in (ketp, ketq)
+                ltip = count = 0
+                for k in filter(x -> A[x], 1:ϕ.Ndim)
+                    count += sum(ket[ltip+1:k-1])
+                    phase *= (-1.0+0.0im)^(count * ket[k])
+                    ltip = k
+                end
             end
-            push!(phases, parity_factor)
+            # 2. partial transpose w.r.t. subsystem B
+            if !BPT
+                τ_pA = sum(ketpA)
+                τ_qA = sum(ketqA)
+                τ_pB = sum(ketpB)
+                τ_qB = sum(ketqB)
+                parity_factor = mod(τ_pB + τ_qB, 2)/2 + (τ_pA + τ_qA)*(τ_pB + τ_qB)
+                if twisted
+                    parity_factor += τ_pB
+                end
+            end
+            phase *= (-1.0+0.0im)^parity_factor
+            # 3. move all the Asites back
+            for ket in (keti, ketj)
+                ltip = count = 0
+                for k in filter(x -> A[x], 1:ϕ.Ndim)
+                    count += sum(ket[ltip+1:k-1])
+                    phase *= (-1.0+0.0im)^(count * ket[k])
+                    ltip = k
+                end
+            end
+            push!(phases, phase)
         end
 
         # if ((p+1) % 5000 == 0 && (q+1) % 5000 == 0) || (p==0 && q==0)
@@ -102,7 +126,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
             it += 1
             ρTB[k] = ψ[i] * ψ[j]'
             if (ϕ.stype == :fermion && !BPT)
-                ρTB[k] *= (-1+0im)^phases[it]
+                ρTB[k] *= phases[it]
             end
         end
         return ρTB
@@ -115,7 +139,7 @@ function ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::B
             it += 1
             ρTB[k] = ρ[i,j]
             if (ϕ.stype == :fermion && !BPT)
-                ρTB[k] *= (-1+0im)^phases[it]
+                ρTB[k] *= phases[it]
             end
         end
         return ρTB
@@ -182,6 +206,7 @@ E_N(α) = 1/(1-α) * log(tr(ρ^α))
 end
 @inline function Renyi_negativity(ρ::AbstractMatrix{T}, αs::Vector{Float64};lcheck::Bool=false) where T<:Union{Float64, ComplexF64}
     λ = @inline eigvals(ρ)
+    # λ = eigen(ρ).values
     # check if the eigenvalues are real
     if all(abs.(imag.(λ)) .< 1e-10 )
         λ = real.(λ)
@@ -193,6 +218,12 @@ end
         print_eigenvalues_with_degeneracy(λ)
         for rnk in 1:16
             print("Sum of eigenvalues^$(rnk): $(sum(λ.^rnk))\n")
+        end
+        # try brutal force matrix multiplication and then take trace
+        ρα = ρ
+        for i in 1:16
+            print("Tr(ρ^$(i)): $(tr(ρα))\n")
+            ρα = ρα * ρ
         end
     end
     Renyi_negs = zeros(ComplexF64, length(αs))
