@@ -9,6 +9,11 @@ end
 """
     random_density_matrix(ϕ::FBbasis; pure::Bool=true, rank::Int=ϕ.Hdim)
 Generate a random density matrix of dimension `Hdim` with the option of being pure or mixed.
+
+# Arguments
+- `ϕ`: The basis of the Hilbert space
+- `pure`: If true, generates a pure state density matrix
+- `rank`: For mixed states, specifies the rank of the density matrix
 """
 function random_density_matrix(ϕ::FBbasis; pure::Bool=true, rank::Int=ϕ.Hdim)
     Hdim = ϕ.Hdim
@@ -24,9 +29,15 @@ function random_density_matrix(ϕ::FBbasis; pure::Bool=true, rank::Int=ϕ.Hdim)
 end
 
 """
-    rdm_generator(ϕ::FBbasis, Asites::Vector{Int})
+    rdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, newbasis::Bool=false)
 Generate a function used to calculates the reduced density matrix of a subsystem A, 
 according to the basis `ϕ` and the sites `Asites` in subsystem A.
+
+# Arguments
+- `ϕ`: The basis of the full Hilbert space
+- `Asites`: Array of indices for subsystem A, starting from 1. Can be Nothing.
+- `pure`: If true, the returned function takes a ket as input; otherwise, it takes a density matrix
+- `newbasis`: If true, also returns the basis for the reduced system
 """
 function rdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, newbasis::Bool=false)
     @assert isnothing(Asites) ? true : (Asites == unique(Asites))
@@ -110,8 +121,9 @@ end
 xlogx(x::Real) = x>0 ? x*log(x) : 0.0
 """
     vonNeumann_entropy(ρ::AbstractMatrix{T}) where T<:Union{Float64, ComplexF64}
-Calculate the von Neumann entropy of a density matrix `ρ`. 
-S = -tr(ρ*log(ρ))
+    vonNeumann_entropy(λ::Vector{T}) where T<:Union{Float64, ComplexF64}
+Calculate the von Neumann entropy of a density matrix `ρ` or its eigenvalues `λ`. 
+S = -tr(ρ*log(ρ)) = -∑ᵢλᵢlog(λᵢ)
 """
 function vonNeumann_entropy(ρ::AbstractMatrix{T}) where T<:Union{Float64, ComplexF64}
     λ = eigvals(ρ)
@@ -125,8 +137,13 @@ end
 
 """
     Renyi_entropy(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
-Calculate the Renyi entropy of a density matrix `ρ` with the order `α`.
+    Renyi_entropy(ρ::AbstractMatrix{T}, αs::Vector{Float64}) where T<:Union{Float64, ComplexF64}
+Calculate the Renyi entropy of a density matrix `ρ` with either a single order `α` or multiple orders `αs`.
 S(α) = 1/(1-α) * log(tr(ρ^α))
+
+# Arguments
+- `ρ`: The density matrix
+- `α` or `αs`: Single order or vector of orders for Renyi entropy calculation
 """
 function Renyi_entropy(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
     if α == 1.0

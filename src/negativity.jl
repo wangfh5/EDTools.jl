@@ -30,10 +30,10 @@ end
 
 
 """
-    ptdm_generator(ϕ::FBbasis, Asites::Vector{Int}; pure::Bool=true, twisted::Bool=false)
+    ptdm_generator(ϕ::FBbasis, Asites::Union{Nothing,Vector{Int}}; pure::Bool=true, twisted::Bool=false, BPT::Bool=false)
 Generate a function used to calculates the partially tranposed density matrix of a subsystem A, or the partial tranpose of ρ w.r.t. subsystem B. 
 `ϕ`: the basis of the full Hilbert space.
-`Asites`: an array of indices of subsystem A, starting from 1. 
+`Asites`: an array of indices of subsystem A, starting from 1. Can be Nothing.
 `pure`: If true, the returned function takes a ket in the full Hilbert space as input; otherwise, it takes a density matrix.
 `twisted`: If true, the twisted partial transpose is considered for fermions. Otherwise, use untwisted partial transpose.
 `BPT`: If true, the conventional bosonic partial transpose is chosen, even for fermions.
@@ -158,9 +158,15 @@ function log_negativity(ρ::AbstractMatrix{T}) where T<:Union{Float64, ComplexF6
 end
 
 """
-    Renyi_negativity(ρ::AbstractMatrix{T}, α::Float64) where T<:Union{Float64, ComplexF64}
-Calculate the Renyi negativity of a density matrix `ρ` with the order `α`.
+    Renyi_negativity(ρ::AbstractMatrix{T}, α::Float64; lcheck::Bool=false) where T<:Union{Float64, ComplexF64}
+    Renyi_negativity(ρ::AbstractMatrix{T}, αs::Vector{Float64}; lcheck::Bool=false) where T<:Union{Float64, ComplexF64}
+Calculate the Renyi negativity of a density matrix `ρ` with either a single order `α` or multiple orders `αs`.
 E_N(α) = 1/(1-α) * log(tr(ρ^α))
+
+# Arguments
+- `ρ`: The density matrix
+- `α` or `αs`: Single order or vector of orders for Renyi negativity calculation
+- `lcheck`: If true, prints additional eigenvalue information for debugging
 """
 @inline function Renyi_negativity(ρ::AbstractMatrix{T}, α::Float64;lcheck::Bool=false) where T<:Union{Float64, ComplexF64}
     if α == 1.0
